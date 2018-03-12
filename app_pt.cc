@@ -8,9 +8,6 @@
 app_pt::app_pt(pid_t parent){
 	pt = new page_table_t();
 	swap_blocks_used = 0;
-	for(unsigned int i = 0; i < 4096; ++i){
-		swap_blocks[i] = 0;
-	}
 	pte_next_index = 0;
 	if(!parent){
 		for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
