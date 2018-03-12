@@ -47,7 +47,7 @@ void vm_globals::load_page(unsigned int vpage){
 			//if evicted is a page in the running process, update external PTE
 			for(unsigned int i = 0; app->ptes[i] != nullptr && i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
 				if(app->ptes[i] == evicted){
-					app->ptes[i]->pte = evicted->pte;
+					app->pt->ptes[i] = evicted->pte;
 					break;
 				}
 			}
