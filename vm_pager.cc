@@ -18,6 +18,11 @@ void vm_init(size_t memory_pages, size_t swap_blocks){
 	global_data.memory_pages = memory_pages;
 	global_data.max_swap_blocks = swap_blocks;
 
+	//initialize free_swap_blocks
+	for (unsigned int i = 0; i < swap_blocks; ++i) {
+		global_data.free_swap_blocks.push(i);
+	}
+
 	//init zero page
 	for(unsigned int i = 0; i < VM_PAGESIZE; ++i){
 		((char *)vm_physmem)[i] = 0;
@@ -72,7 +77,6 @@ void vm_switch(pid_t pid){
 int vm_fault(const void *addr, bool write_flag){
 	unsigned int vpage = (unsigned int)((char*)addr - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 	app_pt* app = global_data.app_map[global_data.curr_pid];
-	cout << "vpage: " << vpage << endl;
 	//check if valid address
 	if(vpage < 0 || vpage >= app->pte_next_index){
 		return -1;
@@ -83,9 +87,9 @@ int vm_fault(const void *addr, bool write_flag){
 		global_data.load_page(vpage);
 
 	app->ptes[vpage]->reference = 1;
-	app->ptes[vpage]->dirty = write_flag? 1 : 0;
+	app->ptes[vpage]->dirty = write_flag;
 	app->ptes[vpage]->pte.read_enable = 1;
-	app->ptes[vpage]->pte.write_enable = write_flag? 1 : 0;
+	app->ptes[vpage]->pte.write_enable = write_flag;
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
 	return 0;
 }

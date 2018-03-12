@@ -4,6 +4,7 @@
 #include "vm_pager.h"
 #include <bitset>
 #include <utility>
+#include <queue>
 
 class app_pt{
 public:
@@ -21,7 +22,8 @@ public:
 
 	page_table_t *pt;
 	size_t swap_blocks_used;
-	unsigned char swap_blocks[4096]; //1 = reserved, 2 = in use
+	std::queue<unsigned int> reserved_blocks;
+	std::queue<unsigned int> used_blocks;
 	unsigned int pte_next_index;
 	app_pte* ptes[VM_ARENA_SIZE/VM_PAGESIZE];
 

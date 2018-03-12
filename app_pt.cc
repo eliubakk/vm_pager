@@ -53,16 +53,15 @@ app_pt::app_pt(pid_t parent){
 //EFFECTS:  sets reserve number of blocks to 1 (reserved).
 //RETURNS:  true if there were enough blocks to reserve.
 bool app_pt::reserve_blocks(size_t reserve){
-	unsigned int saved = 0;
-	for(unsigned int i = 0; i < global_data.max_swap_blocks && saved < reserve; ++i){
-		if(!global_data.swap_blocks[i]){
-			global_data.swap_blocks[i] = 0b1;
-			swap_blocks[i] = 1;
-			++saved;
-			++swap_blocks_used;
-		}
+	if (reserve > global_data.free_swap_blocks.size()) {
+		return false;
 	}
-	return (saved == reserve);
+	for (size_t i = 0; i < reserve; ++i) {
+		reserved_swap_blocks.push(global_data.free_swap_blocks.front());
+		global_data.free_swap_blocks.pop();
+	}
+	swap_blocks_used += reserve;
+	return true;
 }
 
 //REQUIRES: a new swap_block has been reserved.
@@ -70,16 +69,12 @@ bool app_pt::reserve_blocks(size_t reserve){
 //EFFECTS: creates a new app_pte, and sets swap_block to used.
 //RETURNS: virtual address of new swap backed bage.
 void* app_pt::map_swap_backed(){
-	for(unsigned int i = 0; i < global_data.max_swap_blocks; ++i){
-		if(swap_blocks[i] == 1){
-			swap_blocks[i] = 2;
-			ptes[pte_next_index] = new app_pte(nullptr, i);
-			pt->ptes[pte_next_index] = ptes[pte_next_index]->pte;
-			++pte_next_index;
-			return (void*)((char*)VM_ARENA_BASEADDR + (pte_next_index - 1)*VM_PAGESIZE);
-		}
-	}
-	return nullptr;
+	used_swap_blocks.push(reserved_swap_blocks.front());
+	reserved_swap_blocks.pop();
+	ptes[pte_next_index] = new app_pte(nullptr, used_swap_blocks.back());
+	pt->ptes[pte_next_index] = ptes[pte_next_index]->pte;
+	++pte_next_index;
+	return (void*)((char*)VM_ARENA_BASEADDR + (pte_next_index - 1)*VM_PAGESIZE);
 }
 
 app_pt::~app_pt(){
@@ -90,7 +85,7 @@ app_pt::app_pte::app_pte(char* file_in, unsigned int block_in){
 	file = file_in;
 	block = block_in;
 	pte.ppage = 0;
-	pte.read_enable = (file_in == nullptr)? 1 : 0;
+	pte.read_enable = (file_in == nullptr);
 	pte.write_enable = 0;
 	num_refs = 1;
 	dirty = 0b0;
