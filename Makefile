@@ -36,11 +36,11 @@ define make_tests
     HDRS = $$(wildcard *.h)
     $(1): CXXFLAGS += $$(DEBUGFLAGS)
     $(1): $$(HDRS) $$(OBJS) $(1).cc
-	$$(CXX) $$(CXXFLAGS) $$(APP_LIBS) $$(OBJS) $(1).cc -o $(1)
+	$$(CXX) $$(CXXFLAGS) $$(APP_LIBS) $(1).cc -o $(1)
 endef
 $(foreach test, $(TESTS), $(eval $(call make_tests, $(test))))
 
-alltests: clean $(TESTS)
+alltests: $(TESTS)
 
 clean: 
 	rm -f $(OBJECTS) $(EXECUTABLE) $(TESTS)

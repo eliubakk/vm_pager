@@ -1,6 +1,9 @@
 #include "vm_pager.h"
 #include "vm_globals.h"
 #include <cassert>
+#include <iostream>
+
+using namespace std;
 
 /*
  * vm_init
@@ -13,9 +16,9 @@
  */
 void vm_init(size_t memory_pages, size_t swap_blocks){
 	global_data.memory_pages = memory_pages;
-	global_data.swap_blocks = swap_blocks;
+	global_data.max_swap_blocks = swap_blocks;
 
-	//init zero page.
+	//init zero page
 	for(unsigned int i = 0; i < VM_PAGESIZE; ++i){
 		((char *)vm_physmem)[i] = 0;
 	}
@@ -32,10 +35,13 @@ void vm_init(size_t memory_pages, size_t swap_blocks){
  */
 int vm_create(pid_t parent_pid, pid_t child_pid){
 	if(global_data.app_map.find(parent_pid) == global_data.app_map.end()){
+		//parent process not managed by the pager
 		parent_pid = 0;
 	}else if(!global_data.reserve_blocks(parent_pid)){
+		//not enough swap blocks to reserve
 		return -1;
 	}
+	//create new child process
 	global_data.app_map[child_pid] = new app_pt(parent_pid);
 	return 0;
 }
@@ -47,7 +53,13 @@ int vm_create(pid_t parent_pid, pid_t child_pid){
  * identifier "pid".
  */
 void vm_switch(pid_t pid){
-	assert(false);
+	app_pt *app = global_data.app_map[pid];
+	page_table_base_register = app->pt;
+	//update permission bits (for shared pages)
+	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
+		page_table_base_register->ptes[i] = app->ptes[i]->pte;
+	}
+	global_data.curr_pid = pid;
 }
 
 /*
@@ -58,8 +70,24 @@ void vm_switch(pid_t pid){
  * Returns 0 on success, -1 on failure.
  */
 int vm_fault(const void *addr, bool write_flag){
-	assert(false);
-	return -1;
+	unsigned int vpage = (unsigned int)((char*)addr - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
+	app_pt* app = global_data.app_map[global_data.curr_pid];
+	cout << "vpage: " << vpage << endl;
+	//check if valid address
+	if(vpage < 0 || vpage >= app->pte_next_index){
+		return -1;
+	}
+	assert(app->ptes[vpage] != nullptr);
+
+	if(!app->ptes[vpage]->resident || (app->pt->ptes[vpage].ppage == 0 && write_flag))
+		global_data.load_page(vpage);
+
+	app->ptes[vpage]->reference = 1;
+	app->ptes[vpage]->dirty = write_flag? 1 : 0;
+	app->ptes[vpage]->pte.read_enable = 1;
+	app->ptes[vpage]->pte.write_enable = write_flag? 1 : 0;
+	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
+	return 0;
 }
 
 /*
@@ -69,7 +97,26 @@ int vm_fault(const void *addr, bool write_flag){
  * clean up any resources used by the process.
  */
 void vm_destroy(){
-	assert(false);
+	app_pt* app = global_data.app_map[global_data.curr_pid];
+	global_data.app_map.erase(global_data.curr_pid);
+
+	//free swap_blocks
+	for(unsigned int i = 0; i < global_data.max_swap_blocks; ++i){
+		if(app->swap_blocks[i] > 0)
+			global_data.swap_blocks[i] = 0;
+	}
+	global_data.swap_blocks_used -= app->swap_blocks_used;
+
+	//delete app_ptes if last reference
+	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
+		if(app->ptes[i] == nullptr)
+			continue;
+
+		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident)
+			delete app->ptes[i];
+		else
+			--(app->ptes[i]->num_refs);
+	}
 }
 
 /*
@@ -95,6 +142,13 @@ void vm_destroy(){
  * filename is specified relative to the pager's current working directory.
  */
 void *vm_map(const char *filename, size_t block){
-	assert(false);
+	if(!filename){
+		//swap backed
+		if(!global_data.reserve_blocks(0))
+			return nullptr;
+		app_pt* app = global_data.app_map[global_data.curr_pid];
+		app->reserve_blocks(1);
+		return app->map_swap_backed();
+	}
 	return nullptr;
 }
