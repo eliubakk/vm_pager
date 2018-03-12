@@ -105,9 +105,13 @@ void vm_destroy(){
 	global_data.app_map.erase(global_data.curr_pid);
 
 	//free swap_blocks
-	for(unsigned int i = 0; i < global_data.max_swap_blocks; ++i){
-		if(app->swap_blocks[i] > 0)
-			global_data.swap_blocks[i] = 0;
+	while(!app->reserved_swap_blocks.empty()) {
+		global_data.free_swap_blocks.push(app->reserved_swap_blocks.front());
+		app->reserved_swap_blocks.pop();
+	}
+	while(!app->used_swap_blocks.empty()) {
+		global_data.free_swap_blocks.push(app->used_swap_blocks.front());
+		app->used_swap_blocks.pop();
 	}
 	global_data.swap_blocks_used -= app->swap_blocks_used;
 
