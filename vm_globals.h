@@ -4,7 +4,7 @@
 #include "app_pt.h"
 #include <unordered_map>
 #include <deque>
-#include <bitset>
+#include <queue>
 #include <vector>
 
 class vm_globals{
@@ -14,7 +14,7 @@ public:
 	size_t memory_pages;
 	size_t max_swap_blocks;
 	size_t swap_blocks_used;
-	std::bitset<4096> swap_blocks;
+	std::queue<unsigned int> free_swap_blocks;
 	std::unordered_map<std::string, std::vector< app_pt::app_pte*>> file_blocks;
 	std::deque<app_pt::app_pte*> clock;
 
