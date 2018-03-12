@@ -1,5 +1,5 @@
 test_create.4.cc
-test_test_map_swap_backed_zeros.4.cc
+test_map_swap_backed_zeros.4.cc
 test_spec.4.cc
 test_swap_fork.4.cc
 test_swap_multiple_blocks.4.cc
