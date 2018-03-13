@@ -65,13 +65,15 @@ bool app_pt::reserve_blocks(size_t reserve){
 //MODIFIES: pt, ptes, swap_blocks
 //EFFECTS: creates a new app_pte, and sets swap_block to used.
 //RETURNS: virtual address of new swap backed bage.
-void* app_pt::map_swap_backed(){
+void* app_pt::map_swap_backed(int index){
+	if(index == -1){
+		index = pte_next_index++;
+	}
 	used_swap_blocks.push(reserved_swap_blocks.front());
 	reserved_swap_blocks.pop();
-	ptes[pte_next_index] = new app_pte(nullptr, used_swap_blocks.back());
-	pt->ptes[pte_next_index] = ptes[pte_next_index]->pte;
-	++pte_next_index;
-	return (void*)((char*)VM_ARENA_BASEADDR + (pte_next_index - 1)*VM_PAGESIZE);
+	ptes[index] = new app_pte(nullptr, used_swap_blocks.back());
+	pt->ptes[index] = ptes[index]->pte;
+	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);
 }
 
 app_pt::~app_pt(){

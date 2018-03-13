@@ -20,7 +20,7 @@ public:
 
 	bool reserve_blocks(pid_t parent);
 
-	void load_page(unsigned int vpage);
+	void load_page(unsigned int vpage, char* buffer = nullptr);
 };
 
 extern vm_globals global_data;

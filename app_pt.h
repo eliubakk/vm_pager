@@ -31,7 +31,7 @@ public:
 
 	bool reserve_blocks(size_t reserve);
 
-	void *map_swap_backed();
+	void *map_swap_backed(int index = -1);
 
 	~app_pt();
 };

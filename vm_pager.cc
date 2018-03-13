@@ -87,8 +87,24 @@ int vm_fault(const void *addr, bool write_flag){
 		global_data.load_page(vpage);
 
 	app->ptes[vpage]->reference = 1;
-	app->ptes[vpage]->dirty = write_flag;
 	app->ptes[vpage]->pte.read_enable = 1;
+
+	//Copy on write - swapbacked only
+	if(app->ptes[vpage]->file == nullptr && write_flag && app->ptes[vpage]->num_refs > 1){
+		char buffer[VM_PAGESIZE];
+		for(unsigned int i = 0; i < VM_PAGESIZE; ++i){
+			buffer[i] = ((char*)vm_physmem + app->ptes[vpage]->pte.ppage * VM_PAGESIZE)[i];
+		}
+		if(--(app->ptes[vpage]->num_refs) == 1){
+			app->ptes[vpage]->pte.write_enable = (app->ptes[vpage]->resident && app->ptes[vpage]->dirty);
+		}
+		app->map_swap_backed(vpage);
+		global_data.load_page(vpage, buffer);
+		app->ptes[vpage]->reference = 1;
+		app->ptes[vpage]->pte.read_enable = 1;
+	}
+
+	app->ptes[vpage]->dirty = write_flag;
 	app->ptes[vpage]->pte.write_enable = write_flag;
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
 	return 0;
@@ -122,8 +138,12 @@ void vm_destroy(){
 
 		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident)
 			delete app->ptes[i];
-		else
-			--(app->ptes[i]->num_refs);
+		else{
+			if(--(app->ptes[i]->num_refs) == 1){
+				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
+			}
+
+		}
 	}
 }
 

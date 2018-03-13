@@ -24,7 +24,7 @@ bool vm_globals::reserve_blocks(pid_t parent){
 //REQUIRES: page be a vaild pointer and not be in physmem.
 //MODIFIES: physmem, page, global_data.clock
 //EFFECTS: loads page into physmem, evicts a page to disk if mem is full
-void vm_globals::load_page(unsigned int vpage){
+void vm_globals::load_page(unsigned int vpage, char* buffer){
 	app_pt* app = app_map[curr_pid];
 	app_pt::app_pte *page = app->ptes[vpage];
 	unsigned int ppage = 1;
@@ -77,7 +77,7 @@ void vm_globals::load_page(unsigned int vpage){
 	//read requested page into memory
 	if (page->pte.ppage == 0 && page->file == nullptr){
 		for (unsigned int i = 0; i < VM_PAGESIZE; ++i){
-			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = 0;
+			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = buffer? buffer[i] : 0;
 		}
 	}
 	else{
