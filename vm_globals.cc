@@ -75,8 +75,15 @@ void vm_globals::load_page(unsigned int vpage){
 	}
 
 	//read requested page into memory
+	if (page->pte.ppage == 0 && page->file == nullptr){
+		for (unsigned int i = 0; i < VM_PAGESIZE; ++i){
+			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = 0;
+		}
+	}
+	else{
+		file_read(page->file, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE)));		
+	}
 	page->pte.ppage = ppage;
-	file_read(page->file, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE)));
 	page->reference = 0;
 	page->resident = 1;
 	clock.push_back(page);

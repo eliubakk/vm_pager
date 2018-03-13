@@ -9,13 +9,13 @@ int main(){
 	char* swap_backed3 = (char*)vm_map(nullptr, 0);
 	char* swap_backed4 = (char*)vm_map(nullptr, 0);
 
-	for(unsigned int i = 0; i < 4096; ++i){
+	for(unsigned int i = 0; i < 100; ++i){
 		swap_backed[i] = 'a';
 		swap_backed2[i] = 'b';
 		swap_backed3[i] = 'c';
 		swap_backed4[i] = 'd';		
 	}
-	for (unsigned int i = 0; i < 4096; ++i){
+	for (unsigned int i = 0; i < 100; ++i){
 		assert(swap_backed[i] == 'a');
 		assert(swap_backed2[i] == 'b');
 		assert(swap_backed3[i] == 'c');
