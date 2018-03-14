@@ -5,6 +5,16 @@ using namespace std;
 
 vm_globals global_data;
 
+vm_globals::vm_globals(){
+	zero_page = new app_pt::app_pte(nullptr, 0);
+	zero_page->num_refs = 0;
+	zero_page->resident = 1;
+}
+
+vm_globals::~vm_globals(){
+	delete zero_page;
+}
+
 //Modifies: global_data.swap_blocks_used
 //Effects: if parent == 0, reserves one swap block,
 //		   otherwise reserves number of swap_blocks parent has.
@@ -75,7 +85,7 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 	}
 
 	//read requested page into memory
-	if (page->pte.ppage == 0 && page->file == nullptr){
+	if ((page->pte.ppage == 0 && page->file == nullptr) || buffer != nullptr){
 		for (unsigned int i = 0; i < VM_PAGESIZE; ++i){
 			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = buffer? buffer[i] : 0;
 		}

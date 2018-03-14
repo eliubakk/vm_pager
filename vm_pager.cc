@@ -82,8 +82,10 @@ int vm_fault(const void *addr, bool write_flag){
 		return -1;
 	}
 	assert(app->ptes[vpage] != nullptr);
-
-	if(!app->ptes[vpage]->resident || (app->pt->ptes[vpage].ppage == 0 && write_flag))
+	if(app->ptes[vpage] == global_data.zero_page && write_flag){
+		app->map_swap_backed(vpage);
+	}
+	if(!app->ptes[vpage]->resident)
 		global_data.load_page(vpage);
 
 	app->ptes[vpage]->reference = 1;
@@ -103,7 +105,6 @@ int vm_fault(const void *addr, bool write_flag){
 		app->ptes[vpage]->reference = 1;
 		app->ptes[vpage]->pte.read_enable = 1;
 	}
-
 	app->ptes[vpage]->dirty = write_flag;
 	app->ptes[vpage]->pte.write_enable = write_flag;
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
@@ -133,7 +134,7 @@ void vm_destroy(){
 
 	//delete app_ptes if last reference
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
-		if(app->ptes[i] == nullptr)
+		if(app->ptes[i] == nullptr || app->ptes[i] == global_data.zero_page)
 			continue;
 
 		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident)
@@ -142,7 +143,6 @@ void vm_destroy(){
 			if(--(app->ptes[i]->num_refs) == 1){
 				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
 			}
-
 		}
 	}
 }

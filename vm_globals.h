@@ -16,7 +16,12 @@ public:
 	size_t swap_blocks_used;
 	std::queue<unsigned int> free_swap_blocks;
 	std::unordered_map<std::string, std::vector< app_pt::app_pte*>> file_blocks;
+	app_pt::app_pte* zero_page;
 	std::deque<app_pt::app_pte*> clock;
+
+	vm_globals();
+
+	~vm_globals();
 
 	bool reserve_blocks(pid_t parent);
 

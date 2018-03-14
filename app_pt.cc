@@ -68,10 +68,13 @@ bool app_pt::reserve_blocks(size_t reserve){
 void* app_pt::map_swap_backed(int index){
 	if(index == -1){
 		index = pte_next_index++;
+		ptes[index] = global_data.zero_page;
 	}
-	used_swap_blocks.push(reserved_swap_blocks.front());
-	reserved_swap_blocks.pop();
-	ptes[index] = new app_pte(nullptr, used_swap_blocks.back());
+	else{
+		used_swap_blocks.push(reserved_swap_blocks.front());
+		reserved_swap_blocks.pop();
+		ptes[index] = new app_pte(nullptr, used_swap_blocks.back());		
+	}
 	pt->ptes[index] = ptes[index]->pte;
 	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);
 }
@@ -88,6 +91,6 @@ app_pt::app_pte::app_pte(char* file_in, unsigned int block_in){
 	pte.write_enable = 0;
 	num_refs = 1;
 	dirty = 0b0;
-	resident = (file_in == nullptr);
+	resident = 0;
 	reference = 0b0;
 }
