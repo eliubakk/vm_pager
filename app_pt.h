@@ -5,19 +5,20 @@
 #include <bitset>
 #include <utility>
 #include <queue>
+#include <string>
 
 class app_pt{
 public:
 	struct app_pte{
 		unsigned int num_refs = 0;
-		char *file;
+		std::string file;
 		page_table_entry_t pte;
 		unsigned int block;
 		unsigned int dirty : 1;
 		unsigned int resident : 1;
 		unsigned int reference : 1;
 
-		app_pte(char* file_in, unsigned int block_in);
+		app_pte(std::string file_in, unsigned int block_in);
 	};
 
 	page_table_t *pt;
@@ -32,6 +33,7 @@ public:
 	bool reserve_blocks(size_t reserve);
 
 	void *map_swap_backed(int index = -1);
+	void *map_file_backed(std::string filename, size_t block);
 
 	~app_pt();
 };

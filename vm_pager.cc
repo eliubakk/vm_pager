@@ -2,6 +2,7 @@
 #include "vm_globals.h"
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -92,7 +93,7 @@ int vm_fault(const void *addr, bool write_flag){
 	app->ptes[vpage]->pte.read_enable = 1;
 
 	//Copy on write - swapbacked only
-	if(app->ptes[vpage]->file == nullptr && write_flag && app->ptes[vpage]->num_refs > 1){
+	if(app->ptes[vpage]->file == "" && write_flag && app->ptes[vpage]->num_refs > 1){
 		char buffer[VM_PAGESIZE];
 		for(unsigned int i = 0; i < VM_PAGESIZE; ++i){
 			buffer[i] = ((char*)vm_physmem + app->ptes[vpage]->pte.ppage * VM_PAGESIZE)[i];
@@ -137,8 +138,14 @@ void vm_destroy(){
 		if(app->ptes[i] == nullptr || app->ptes[i] == global_data.zero_page)
 			continue;
 
-		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident)
-			delete app->ptes[i];
+		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident) {
+			if (app->ptes[i]->file != "") {
+				global_data.file_blocks[app->ptes[i]->file].erase(app->ptes[i]->block);
+				if (!app->ptes[i]->dirty)
+					delete app->ptes[i];
+			} else 
+				delete app->ptes[i];
+		}
 		else{
 			if(--(app->ptes[i]->num_refs) == 1){
 				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
@@ -170,13 +177,38 @@ void vm_destroy(){
  * filename is specified relative to the pager's current working directory.
  */
 void *vm_map(const char *filename, size_t block){
+	app_pt* app = global_data.app_map[global_data.curr_pid];
 	if(!filename){
 		//swap backed
 		if(!global_data.reserve_blocks(0))
 			return nullptr;
-		app_pt* app = global_data.app_map[global_data.curr_pid];
 		app->reserve_blocks(1);
 		return app->map_swap_backed();
+	} else {
+		unsigned int vpage = (unsigned int)(filename - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
+		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
+		if(!app->ptes[vpage]->resident)
+			global_data.load_page(vpage);
+			
+		//check if valid address
+		ostringstream file;
+		for (int i = 0; !(vpage < 0 || vpage >= app->pte_next_index); ++i){
+			if (((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset] == '\0') {
+				break;
+			}
+			else {
+				file << ((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset];
+				++offset;
+				if (offset == VM_PAGESIZE) {
+					offset = 0;
+					++vpage;
+				}
+			}
+		}
+		if (vpage < 0 || vpage >= app->pte_next_index)
+		 	return nullptr;
+
+		return app->map_file_backed(file.str(), block);
 	}
 	return nullptr;
 }

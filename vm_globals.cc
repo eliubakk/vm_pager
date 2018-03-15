@@ -6,7 +6,7 @@ using namespace std;
 vm_globals global_data;
 
 vm_globals::vm_globals(){
-	zero_page = new app_pt::app_pte(nullptr, 0);
+	zero_page = new app_pt::app_pte("", 0);
 	zero_page->num_refs = 0;
 	zero_page->resident = 1;
 }
@@ -71,8 +71,9 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 		}
 
 		//if dirty and not non-referenced swap-backed page, write to disk
-		if(evicted->dirty && !(evicted->num_refs == 0 && evicted->file == nullptr)){
-			file_write(evicted->file, evicted->block, (void*)((char*)vm_physmem + (evicted->pte.ppage * VM_PAGESIZE)));
+		if(evicted->dirty && !(evicted->num_refs == 0 && evicted->file == "")){
+			const char *filename = evicted->file == "" ? nullptr : evicted->file.c_str();
+			file_write(filename, evicted->block, (void*)((char*)vm_physmem + (evicted->pte.ppage * VM_PAGESIZE)));
 			evicted->dirty = 0;
 		}
 		evicted->resident = 0;
@@ -85,13 +86,14 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 	}
 
 	//read requested page into memory
-	if ((page->pte.ppage == 0 && page->file == nullptr) || buffer != nullptr){
+	if ((page->pte.ppage == 0 && page->file == "") || buffer != nullptr){
 		for (unsigned int i = 0; i < VM_PAGESIZE; ++i){
 			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = buffer? buffer[i] : 0;
 		}
 	}
 	else{
-		file_read(page->file, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE)));		
+		const char *filename = page->file == "" ? nullptr : page->file.c_str();
+		file_read(filename, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE)));		
 	}
 	page->pte.ppage = ppage;
 	page->reference = 0;

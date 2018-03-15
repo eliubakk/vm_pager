@@ -1,6 +1,9 @@
 #include "app_pt.h"
 #include "vm_globals.h"
 #include "vm_arena.h"
+#include <iostream>
+
+using namespace std;
 
 //REQUIRES: parent != 0, when the pager manages the parent. 
 //EFFECTS:  creates a new page_table_t, and
@@ -29,7 +32,7 @@ app_pt::app_pt(pid_t parent){
 			}
 
 			//swap-backed
-			if(global_data.app_map[parent]->ptes[i]->file == nullptr){
+			if(global_data.app_map[parent]->ptes[i]->file == ""){
 				//set permission bit to fault for COW.
 				global_data.app_map[parent]->pt->ptes[i].write_enable = 0;
 				global_data.app_map[parent]->ptes[i]->pte.write_enable = 0;
@@ -73,24 +76,38 @@ void* app_pt::map_swap_backed(int index){
 	else{
 		used_swap_blocks.push(reserved_swap_blocks.front());
 		reserved_swap_blocks.pop();
-		ptes[index] = new app_pte(nullptr, used_swap_blocks.back());		
+		ptes[index] = new app_pte("", used_swap_blocks.back());		
 	}
 	pt->ptes[index] = ptes[index]->pte;
 	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);
 }
 
+
+void* app_pt::map_file_backed(string filename, size_t block) {
+	unsigned int index = pte_next_index++;
+	if (global_data.file_blocks[filename].find(block) == global_data.file_blocks[filename].end()) {
+		global_data.file_blocks[filename][block] = new app_pte(filename, block);
+	} else 
+		++(global_data.file_blocks[filename][block]->num_refs);
+
+	ptes[index] = global_data.file_blocks[filename][block];
+	pt->ptes[index] = ptes[index]->pte;
+	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);
+}
+
+
 app_pt::~app_pt(){
 	delete pt;
 }
 
-app_pt::app_pte::app_pte(char* file_in, unsigned int block_in){
-	file = file_in;
+app_pt::app_pte::app_pte(string file_in, unsigned int block_in) : file(file_in) {
 	block = block_in;
 	pte.ppage = 0;
-	pte.read_enable = (file_in == nullptr);
+	pte.read_enable = (file_in == "");
 	pte.write_enable = 0;
 	num_refs = 1;
 	dirty = 0b0;
 	resident = 0;
 	reference = 0b0;
 }
+

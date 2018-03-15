@@ -15,7 +15,7 @@ public:
 	size_t max_swap_blocks;
 	size_t swap_blocks_used;
 	std::queue<unsigned int> free_swap_blocks;
-	std::unordered_map<std::string, std::vector< app_pt::app_pte*>> file_blocks;
+	std::unordered_map<std::string, std::unordered_map<size_t, app_pt::app_pte*>> file_blocks;
 	app_pt::app_pte* zero_page;
 	std::deque<app_pt::app_pte*> clock;
 
