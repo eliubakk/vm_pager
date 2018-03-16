@@ -34,7 +34,7 @@ bool vm_globals::reserve_blocks(pid_t parent){
 //REQUIRES: page be a vaild pointer and not be in physmem.
 //MODIFIES: physmem, page, global_data.clock
 //EFFECTS: loads page into physmem, evicts a page to disk if mem is full
-void vm_globals::load_page(unsigned int vpage, char* buffer){
+bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	app_pt* app = app_map[curr_pid];
 	app_pt::app_pte *page = app->ptes[vpage];
 	unsigned int ppage = 1;
@@ -74,7 +74,8 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 		//if dirty and not non-referenced swap-backed page, write to disk
 		if(evicted->dirty && !(evicted->num_refs == 0 && evicted->file == "")){
 			const char *filename = evicted->file == "" ? nullptr : evicted->file.c_str();
-			file_write(filename, evicted->block, (void*)((char*)vm_physmem + (evicted->pte.ppage * VM_PAGESIZE)));
+			if(file_write(filename, evicted->block, (void*)((char*)vm_physmem + (evicted->pte.ppage * VM_PAGESIZE))) == -1)
+				return false;
 			evicted->dirty = 0;
 		}
 		evicted->resident = 0;
@@ -82,6 +83,8 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 
 		//if no more references to this page, delete page
 		if(evicted->num_refs == 0){
+			if(evicted->file != "")
+				global_data.file_blocks[evicted->file].erase(evicted->block);
 			delete evicted;
 		}
 	}
@@ -94,10 +97,12 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 	}
 	else{
 		const char *filename = page->file == "" ? nullptr : page->file.c_str();
-		file_read(filename, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE)));		
+		if(file_read(filename, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE))) == -1)
+			return false;	
 	}
 	page->pte.ppage = ppage;
 	page->reference = 0;
 	page->resident = 1;
 	clock.push_back(page);
+	return true;
 }

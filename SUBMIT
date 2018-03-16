@@ -9,6 +9,7 @@ test_file_name_spans_blocks.4.cc
 test_fork_stress.4.cc
 test_free_swap_blocks.4.cc
 test_map_swap_backed_zeros.4.cc
+test_read_write_fault_resident.4.cc
 test_spec.4.cc
 test_swap_copy_on_write.4.cc
 test_swap_fork.4.cc

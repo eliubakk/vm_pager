@@ -91,12 +91,19 @@ int vm_fault(const void *addr, bool write_flag){
 	if(addr < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
 		return -1;
 	assert(app->ptes[vpage] != nullptr);
+	
+	//if writing to zero page, allocate page
 	if(app->ptes[vpage] == global_data.zero_page && write_flag){
 		app->map_swap_backed(vpage);
 	}
-	if(!app->ptes[vpage]->resident)
-		global_data.load_page(vpage);
 
+	//load page from disk
+	if(!app->ptes[vpage]->resident){
+		if(!global_data.load_page(vpage))
+			return -1;
+	}
+
+	//in memory and has been referenced.
 	app->ptes[vpage]->reference = 1;
 	app->ptes[vpage]->pte.read_enable = 1;
 
@@ -104,18 +111,28 @@ int vm_fault(const void *addr, bool write_flag){
 	if(app->ptes[vpage]->file == "" && write_flag && app->ptes[vpage]->num_refs > 1){
 		char buffer[VM_PAGESIZE];
 		for(unsigned int i = 0; i < VM_PAGESIZE; ++i){
+			//Read page from memory into kernel adderess space.
 			buffer[i] = ((char*)vm_physmem + app->ptes[vpage]->pte.ppage * VM_PAGESIZE)[i];
 		}
+		//Page can be written to if dirty and no other pages reference it
 		if(--(app->ptes[vpage]->num_refs) == 1){
 			app->ptes[vpage]->pte.write_enable = (app->ptes[vpage]->resident && app->ptes[vpage]->dirty);
 		}
+
+		//Getting new virtual page to write buffer to.
 		app->map_swap_backed(vpage);
-		global_data.load_page(vpage, buffer);
+
+		//Load page into memory and copy buffer to it.
+		if(!global_data.load_page(vpage, buffer))
+			return -1;
+
+		//page has been referenced and can be read from.
 		app->ptes[vpage]->reference = 1;
 		app->ptes[vpage]->pte.read_enable = 1;
 	}
-	app->ptes[vpage]->dirty = write_flag;
-	app->ptes[vpage]->pte.write_enable = write_flag;
+
+	app->ptes[vpage]->dirty |=  write_flag;
+	app->ptes[vpage]->pte.write_enable = (app->ptes[vpage]->dirty || write_flag);
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
 	return 0;
 }
@@ -143,9 +160,11 @@ void vm_destroy(){
 
 	//delete app_ptes if last reference
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
+		//don't delete zero page.
 		if(app->ptes[i] == nullptr || app->ptes[i] == global_data.zero_page)
 			continue;
 
+		//If only process referencing vpage and is not in memory, delete vpage.
 		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident) {
 			if (app->ptes[i]->file != "") {
 				global_data.file_blocks[app->ptes[i]->file].erase(app->ptes[i]->block);
@@ -157,6 +176,10 @@ void vm_destroy(){
 		else{
 			if(--(app->ptes[i]->num_refs) == 1){
 				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
+			}else if(app->ptes[i]->num_refs == 0){
+				app->ptes[i]->pte.write_enable = 0;
+				app->ptes[i]->pte.read_enable = 0;
+				app->ptes[i]->reference = 0;
 			}
 		}
 	}
@@ -191,16 +214,24 @@ void *vm_map(const char *filename, size_t block){
 		if(!global_data.reserve_blocks(0))
 			return nullptr;
 		app->reserve_blocks(1);
+
+		//map to zero page
 		return app->map_swap_backed();
 	} else {
 		unsigned int vpage = (unsigned int)(filename - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
-		if(!app->ptes[vpage]->resident)
-			global_data.load_page(vpage);
+		if (filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
+		 	return nullptr;
+
+		if(!app->ptes[vpage]->pte.read_enable){
+			if(vm_fault(filename, 0) == -1){
+				return nullptr;
+			}
+		}
 			
 		//check if valid address
 		ostringstream file;
-		for (int i = 0; !(vpage < 0 || vpage >= app->pte_next_index); ++i){
+		for (int i = 0; !(filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index); ++i){
 			if (((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset] == '\0') {
 				break;
 			}
@@ -210,10 +241,15 @@ void *vm_map(const char *filename, size_t block){
 				if (offset == VM_PAGESIZE) {
 					offset = 0;
 					++vpage;
+					if(!app->ptes[vpage]->pte.read_enable){
+						if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
+							return nullptr;
+						}
+					}
 				}
 			}
 		}
-		if (vpage < 0 || vpage >= app->pte_next_index)
+		if (filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
 		 	return nullptr;
 
 		return app->map_file_backed(file.str(), block);
