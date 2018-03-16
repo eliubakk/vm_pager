@@ -1,6 +1,7 @@
 #include "vm_app.h"
 #include <cassert>
 #include <unistd.h>
+#include <iostream>
 
 using namespace std;
 
@@ -10,8 +11,9 @@ int main(){
 	char* swap_backed = (char*)vm_map(nullptr, 0);
     char* zero = (char*)vm_map(nullptr, 34);
 	swap_backed[0] = 'a';
-	if(!fork())
+	if(!fork()){
         id = ++static_id;
+    }
     if (fork()) {
         swap_backed[1] = 'b';
 	    vm_yield();
@@ -30,7 +32,7 @@ int main(){
     switch (id) {
         case 0:
         case 1:
-            assert(swap_backed[1] != 'b');
+            assert(swap_backed[1] == 'b');
             assert(zero[0] != 'c');
             assert(zero[1] != 'd');
             break;

@@ -63,6 +63,15 @@ void vm_switch(pid_t pid){
 	page_table_base_register = app->pt;
 	//update permission bits (for shared pages)
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
+		/*cout << "app->ptes[" << i << "]:" << endl;
+		cout << "num_refs: " << app->ptes[i]->num_refs << endl;
+		cout << "reference: " << app->ptes[i]->reference << endl;
+		cout << "pte.ppage: " << app->ptes[i]->pte.ppage;
+		cout << ", r: " << app->ptes[i]->pte.read_enable;
+		cout << ", w: " << app->ptes[i]->pte.write_enable << endl;
+		cout << "dirty: " << app->ptes[i]->dirty << endl;
+		cout << "resident: " << app->ptes[i]->resident << endl;
+		cout << "block: " << app->ptes[i]->block << endl;*/
 		page_table_base_register->ptes[i] = app->ptes[i]->pte;
 	}
 	global_data.curr_pid = pid;
@@ -79,9 +88,8 @@ int vm_fault(const void *addr, bool write_flag){
 	unsigned int vpage = (unsigned int)((char*)addr - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 	app_pt* app = global_data.app_map[global_data.curr_pid];
 	//check if valid address
-	if(vpage < 0 || vpage >= app->pte_next_index){
+	if(addr < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
 		return -1;
-	}
 	assert(app->ptes[vpage] != nullptr);
 	if(app->ptes[vpage] == global_data.zero_page && write_flag){
 		app->map_swap_backed(vpage);

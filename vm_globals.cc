@@ -49,6 +49,7 @@ void vm_globals::load_page(unsigned int vpage, char* buffer){
 		while(evicted == nullptr){
 			evicted = clock.front();
 			clock.pop_front();
+			//cout << "clock sweep: " << evicted->pte.ppage << endl;
 
 			//reset read and write enable to fault on next reference
 			evicted->pte.read_enable = 0;

@@ -40,8 +40,8 @@ app_pt::app_pt(pid_t parent){
 
 			//set page data for new app.
 			pt->ptes[i] = ptes[i]->pte;
-
-			++(ptes[i]->num_refs);
+			if(ptes[i] != global_data.zero_page)
+				++(ptes[i]->num_refs);
 		}
 		pte_next_index = global_data.app_map[parent]->pte_next_index;
 		reserve_blocks(global_data.app_map[parent]->swap_blocks_used);
