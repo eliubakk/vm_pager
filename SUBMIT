@@ -4,6 +4,8 @@ test_swap_copy_on_write.4.cc
 test_swap_multiple_blocks.4.cc
 test_swap_zero_copy_on_write.4.cc
 test_dirty_swap_blocks.8.cc
+test_fb_mult_fork_rw.4.cc
+test_fb_fork_rw.4.cc
 test_swap_map_after_fork.4.cc
 test_map_swap_backed_zeros.4.cc
 test_free_swap_blocks.4.cc
