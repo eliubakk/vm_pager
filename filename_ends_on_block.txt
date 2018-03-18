@@ -1,0 +1,15 @@
+Pager started with 4 physical memory pages
+vm_create	(6794, 7002)
+vm_create returned 0
+vm_switch	(7002)
+					returning to (7002) with pages:
+vm_map		(7002)	0x0	0
+vm_map returned 0x600000000
+					returning to (7002) with pages:
+					r	vpage 0x600000	ppage 0x0
+vm_fault	(7002)	0x600000ff1	write
+vm_fault returned 0
+					returning to (7002) with pages:
+					rw	vpage 0x600000	ppage 0x1
+vm_map		(7002)	0x600000ff1	0
+Segmentation fault, exiting

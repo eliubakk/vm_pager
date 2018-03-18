@@ -92,6 +92,7 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	//read requested page into memory
 	if ((page->pte.ppage == 0 && page->file == "") || buffer != nullptr){
 		for (unsigned int i = 0; i < VM_PAGESIZE; ++i){
+			//copy on write, or init to zero
 			((char*)vm_physmem + ppage * VM_PAGESIZE)[i] = buffer? buffer[i] : 0;
 		}
 	}

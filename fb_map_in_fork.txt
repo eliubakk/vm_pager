@@ -1,0 +1,72 @@
+Pager started with 4 physical memory pages
+vm_create	(6794, 1628)
+vm_create returned 0
+vm_switch	(1628)
+					returning to (1628) with pages:
+vm_map		(1628)	0x0	0
+vm_map returned 0x600000000
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x0
+vm_fault	(1628)	0x600000000	write
+vm_fault returned 0
+					returning to (1628) with pages:
+					rw	vpage 0x600000	ppage 0x1
+vm_map		(1628)	0x600000000	0
+vm_map returned 0x600001000
+					returning to (1628) with pages:
+					rw	vpage 0x600000	ppage 0x1
+vm_create	(1628, 1629)
+vm_create returned 0
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x1
+vm_map		(1628)	0x600000000	0
+vm_map returned 0x600002000
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x1
+vm_fault	(1628)	0x600002000	write
+file_read	shakespeare.txt	0
+vm_fault returned 0
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_switch	(1629)
+					returning to (1629) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+vm_map		(1629)	0x600000000	0
+vm_map returned 0x600002000
+					returning to (1629) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_switch	(1628)
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_create	(1628, 1631)
+vm_create returned 0
+					returning to (1628) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_switch	(1629)
+					returning to (1629) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_destroy	(1629)
+vm_switch	(1631)
+					returning to (1631) with pages:
+					r	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_destroy	(1631)
+vm_switch	(1628)
+					returning to (1628) with pages:
+					rw	vpage 0x600000	ppage 0x1
+					rw	vpage 0x600001	ppage 0x2
+					rw	vpage 0x600002	ppage 0x2
+vm_destroy	(1628)
+Terminated, exiting
