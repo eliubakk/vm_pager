@@ -225,16 +225,15 @@ void *vm_map(const char *filename, size_t block){
 		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
 		if (filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
 		 	return nullptr;
-
-		if(!app->ptes[vpage]->pte.read_enable){
-			if(vm_fault(filename, 0) == -1){
-				return nullptr;
-			}
-		}
 			
 		//check if valid address
 		ostringstream file;
 		for (int i = 0; !(filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index); ++i){
+			if(!app->ptes[vpage]->pte.read_enable){
+				if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
+					return nullptr;
+				}
+			}
 			if (((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset] == '\0') {
 				break;
 			}
@@ -244,11 +243,6 @@ void *vm_map(const char *filename, size_t block){
 				if (offset == VM_PAGESIZE) {
 					offset = 0;
 					++vpage;
-					if(!app->ptes[vpage]->pte.read_enable){
-						if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
-							return nullptr;
-						}
-					}
 				}
 			}
 		}
