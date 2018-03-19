@@ -1,5 +1,6 @@
 #include "vm_globals.h"
 #include <iostream>
+#include <bitset>
 
 using namespace std;
 
@@ -41,7 +42,17 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	app_pt::app_pte *evicted = nullptr;
 	//physmem is not full
 	if(clock.size() < (memory_pages - 1)){
-		ppage += clock.size();
+		vector<bool> resident(memory_pages, false);
+		resident[0] = true;
+		for(auto it: clock){
+			resident[it->pte.ppage] = true;
+		}
+		for(unsigned int i = 0; i < memory_pages; ++i){
+			if(!resident[i]){
+				ppage = i;
+				break;
+			}
+		}
 	}
 	// physmem full - clock eviction needed
 	else{
@@ -106,4 +117,13 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	page->resident = 1;
 	clock.push_back(page);
 	return true;
+}
+
+void vm_globals::remove_from_clock(app_pt::app_pte* page){
+	for(auto it = clock.begin(); it != clock.end(); ++it){
+		if(*it == page){
+			clock.erase(it);
+			break;
+		}
+	}
 }

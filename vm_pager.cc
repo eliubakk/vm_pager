@@ -179,10 +179,9 @@ void vm_destroy(){
 		else{
 			if(--(app->ptes[i]->num_refs) == 1){
 				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
-			}else if(app->ptes[i]->num_refs == 0){
-				app->ptes[i]->pte.write_enable = 0;
-				app->ptes[i]->pte.read_enable = 0;
-				app->ptes[i]->reference = 0;
+			}else if(app->ptes[i]->num_refs == 0 && app->ptes[i]->file == ""){
+				global_data.remove_from_clock(app->ptes[i]);
+				delete app->ptes[i];
 			}
 		}
 	}

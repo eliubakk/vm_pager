@@ -26,6 +26,8 @@ public:
 	bool reserve_blocks(pid_t parent);
 
 	bool load_page(unsigned int vpage, char* buffer = nullptr);
+
+	void remove_from_clock(app_pt::app_pte* page);
 };
 
 extern vm_globals global_data;
