@@ -8,6 +8,7 @@ test_file_backed_fork.4.cc
 test_file_name_block_evicted.4.cc
 test_file_name_ends_at_block.4.cc
 test_file_name_spans_blocks.4.cc
+test_filebacked_statemachine.4.cc
 test_fork_stress.4.cc
 test_free_swap_blocks.4.cc
 test_map_swap_backed_zeros.4.cc

@@ -53,13 +53,6 @@ app_pt::app_pt(pid_t parent){
 //EFFECTS:  sets reserve number of blocks to 1 (reserved).
 //RETURNS:  true if there were enough blocks to reserve.
 bool app_pt::reserve_blocks(size_t reserve){
-	if (reserve > global_data.free_swap_blocks.size()) {
-		return false;
-	}
-	for (size_t i = 0; i < reserve; ++i) {
-		reserved_swap_blocks.push(global_data.free_swap_blocks.front());
-		global_data.free_swap_blocks.pop();
-	}
 	swap_blocks_used += reserve;
 	return true;
 }
@@ -74,9 +67,8 @@ void* app_pt::map_swap_backed(int index){
 		ptes[index] = global_data.zero_page;
 	}
 	else{
-		used_swap_blocks.push(reserved_swap_blocks.front());
-		reserved_swap_blocks.pop();
-		ptes[index] = new app_pte("", used_swap_blocks.back());		
+		ptes[index] = new app_pte("", global_data.free_swap_blocks.front());
+		global_data.free_swap_blocks.pop();		
 	}
 	pt->ptes[index] = ptes[index]->pte;
 	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);

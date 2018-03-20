@@ -63,15 +63,15 @@ void vm_switch(pid_t pid){
 	page_table_base_register = app->pt;
 	//update permission bits (for shared pages)
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
-		/*cout << "app->ptes[" << i << "]:" << endl;
-		cout << "num_refs: " << app->ptes[i]->num_refs << endl;
-		cout << "reference: " << app->ptes[i]->reference << endl;
-		cout << "pte.ppage: " << app->ptes[i]->pte.ppage;
-		cout << ", r: " << app->ptes[i]->pte.read_enable;
-		cout << ", w: " << app->ptes[i]->pte.write_enable << endl;
-		cout << "dirty: " << app->ptes[i]->dirty << endl;
-		cout << "resident: " << app->ptes[i]->resident << endl;
-		cout << "block: " << app->ptes[i]->block << endl;*/
+		/*//cout << "app->ptes[" << i << "]:" << endl;
+		//cout << "num_refs: " << app->ptes[i]->num_refs << endl;
+		//cout << "reference: " << app->ptes[i]->reference << endl;
+		//cout << "pte.ppage: " << app->ptes[i]->pte.ppage;
+		//cout << ", r: " << app->ptes[i]->pte.read_enable;
+		//cout << ", w: " << app->ptes[i]->pte.write_enable << endl;
+		//cout << "dirty: " << app->ptes[i]->dirty << endl;
+		//cout << "resident: " << app->ptes[i]->resident << endl;
+		//cout << "block: " << app->ptes[i]->block << endl;*/
 		page_table_base_register->ptes[i] = app->ptes[i]->pte;
 	}
 	global_data.curr_pid = pid;
@@ -151,36 +151,33 @@ void vm_destroy(){
 	global_data.app_map.erase(global_data.curr_pid);
 
 	//free swap_blocks
-	while(!app->reserved_swap_blocks.empty()) {
-		global_data.free_swap_blocks.push(app->reserved_swap_blocks.front());
-		app->reserved_swap_blocks.pop();
-	}
-	while(!app->used_swap_blocks.empty()) {
-		global_data.free_swap_blocks.push(app->used_swap_blocks.front());
-		app->used_swap_blocks.pop();
-	}
 	global_data.swap_blocks_used -= app->swap_blocks_used;
 
 	//delete app_ptes if last reference
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
 		//don't delete zero page.
-		if(app->ptes[i] == nullptr || app->ptes[i] == global_data.zero_page)
+		if(app->ptes[i] == nullptr || app->ptes[i] == global_data.zero_page){
 			continue;
+		}
 
 		//If only process referencing vpage and is not in memory, delete vpage.
 		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident) {
 			if (app->ptes[i]->file != "") {
 				global_data.file_blocks[app->ptes[i]->file].erase(app->ptes[i]->block);
-				if (!app->ptes[i]->dirty)
+				if (!app->ptes[i]->dirty){
 					delete app->ptes[i];
-			} else 
+				}
+			} else {
+				global_data.free_swap_blocks.push(app->ptes[i]->block);
 				delete app->ptes[i];
+			}
 		}
 		else{
 			if(--(app->ptes[i]->num_refs) == 1){
 				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
 			}else if(app->ptes[i]->num_refs == 0 && app->ptes[i]->file == ""){
 				global_data.remove_from_clock(app->ptes[i]);
+				global_data.free_swap_blocks.push(app->ptes[i]->block);
 				delete app->ptes[i];
 			}
 		}
