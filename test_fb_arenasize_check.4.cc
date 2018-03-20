@@ -9,9 +9,9 @@ using namespace std;
 int main()
 {
     char* swapbacked = (char*) vm_map(nullptr, 0);
-    swapbacked[0] = 'a';
+    strcpy(swapbacked, "data1.bin");
     for (unsigned int i = 0; i < 5000; ++i){
-        if ((char*)vm_map("data1.bin", 0) == nullptr)
+        if ((char*)vm_map(swapbacked, 0) == nullptr)
             assert(false);
     }
 }

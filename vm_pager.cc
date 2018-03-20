@@ -89,7 +89,7 @@ int vm_fault(const void *addr, bool write_flag){
 	app_pt* app = global_data.app_map[global_data.curr_pid];
 
 	//check if valid address
-	if(addr < VM_ARENA_BASEADDR || addr >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
+	if(addr < VM_ARENA_BASEADDR || addr >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		return -1;
 	assert(app->ptes[vpage] != nullptr);
 	
@@ -100,10 +100,8 @@ int vm_fault(const void *addr, bool write_flag){
 
 	//load page from disk
 	if(!app->ptes[vpage]->resident){
-		if(!global_data.load_page(vpage)){
-			
+		if(!global_data.load_page(vpage))
 			return -1;	
-		}
 	}
 
 	//in memory and has been referenced.
@@ -232,13 +230,13 @@ void *vm_map(const char *filename, size_t block){
 	} else {
 		unsigned int vpage = (unsigned int)(filename - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 		//maybe do arithmatic as char* and then case to unsigned int.
-		unsigned int offset = (unsigned int)(filename - (char*)(vpage * VM_PAGESIZE));
-		if (filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
+		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
+		if (filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		 	return nullptr;
 			
 		//check if valid address
 		ostringstream file;
-		for (int i = 0; !(filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index); ++i){
+		for (int i = 0; !(filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index); ++i){
 			if(!app->ptes[vpage]->pte.read_enable){
 				if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
 					return nullptr;
@@ -256,7 +254,7 @@ void *vm_map(const char *filename, size_t block){
 				}
 			}
 		}
-		if (filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
+		if (filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		 	return nullptr;
 
 		return app->map_file_backed(file.str(), block);
