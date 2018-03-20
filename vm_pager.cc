@@ -87,8 +87,9 @@ void vm_switch(pid_t pid){
 int vm_fault(const void *addr, bool write_flag){
 	unsigned int vpage = (unsigned int)((char*)addr - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 	app_pt* app = global_data.app_map[global_data.curr_pid];
+
 	//check if valid address
-	if(addr < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
+	if(addr < VM_ARENA_BASEADDR || addr >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		return -1;
 	assert(app->ptes[vpage] != nullptr);
 	
@@ -99,8 +100,10 @@ int vm_fault(const void *addr, bool write_flag){
 
 	//load page from disk
 	if(!app->ptes[vpage]->resident){
-		if(!global_data.load_page(vpage))
-			return -1;
+		if(!global_data.load_page(vpage)){
+			
+			return -1;	
+		}
 	}
 
 	//in memory and has been referenced.
@@ -161,21 +164,26 @@ void vm_destroy(){
 		}
 
 		//If only process referencing vpage and is not in memory, delete vpage.
-		if(app->ptes[i]->num_refs == 1 && !app->ptes[i]->resident) {
+		if(--(app->ptes[i]->num_refs) == 0 && !app->ptes[i]->resident) {
 			if (app->ptes[i]->file != "") {
+				//file backed, not in memory, delete vpage
 				global_data.file_blocks[app->ptes[i]->file].erase(app->ptes[i]->block);
 				if (!app->ptes[i]->dirty){
 					delete app->ptes[i];
 				}
 			} else {
+				//swap backed not in memory, delete vpage, free swapblock
 				global_data.free_swap_blocks.push(app->ptes[i]->block);
 				delete app->ptes[i];
 			}
 		}
-		else{
-			if(--(app->ptes[i]->num_refs) == 1){
-				app->ptes[i]->pte.write_enable = (app->ptes[i]->resident && app->ptes[i]->dirty);
-			}else if(app->ptes[i]->num_refs == 0 && app->ptes[i]->file == ""){
+		else if(app->ptes[i]->file == ""){
+			//resident or shared swap back pages
+			if(app->ptes[i]->num_refs == 1){
+				//no longer shared, write can be re-enabled.
+				app->ptes[i]->pte.write_enable = (app->ptes[i]->reference && app->ptes[i]->resident && app->ptes[i]->dirty);
+			}else if(app->ptes[i]->num_refs == 0){
+				//"evict" no longer needed swap backed page from physmem and free swapblock.
 				global_data.remove_from_clock(app->ptes[i]);
 				global_data.free_swap_blocks.push(app->ptes[i]->block);
 				delete app->ptes[i];
@@ -208,6 +216,11 @@ void vm_destroy(){
  */
 void *vm_map(const char *filename, size_t block){
 	app_pt* app = global_data.app_map[global_data.curr_pid];
+	
+	//check if arena is full
+	if(app->pte_next_index == VM_ARENA_SIZE/VM_PAGESIZE)
+		return nullptr;
+
 	if(!filename){
 		//swap backed
 		if(!global_data.reserve_blocks(0))
@@ -218,13 +231,14 @@ void *vm_map(const char *filename, size_t block){
 		return app->map_swap_backed();
 	} else {
 		unsigned int vpage = (unsigned int)(filename - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
-		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
-		if (filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
+		//maybe do arithmatic as char* and then case to unsigned int.
+		unsigned int offset = (unsigned int)(filename - (char*)(vpage * VM_PAGESIZE));
+		if (filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		 	return nullptr;
 			
 		//check if valid address
 		ostringstream file;
-		for (int i = 0; !(filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index); ++i){
+		for (int i = 0; !(filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index); ++i){
 			if(!app->ptes[vpage]->pte.read_enable){
 				if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
 					return nullptr;
@@ -242,7 +256,7 @@ void *vm_map(const char *filename, size_t block){
 				}
 			}
 		}
-		if (filename < VM_ARENA_BASEADDR || vpage >= app->pte_next_index)
+		if (filename < VM_ARENA_BASEADDR || filename >= (VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
 		 	return nullptr;
 
 		return app->map_file_backed(file.str(), block);

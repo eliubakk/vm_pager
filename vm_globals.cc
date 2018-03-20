@@ -83,7 +83,7 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 
 		//if dirty and not non-referenced swap-backed page, write to disk
 		if(evicted->dirty && !(evicted->num_refs == 0 && evicted->file == "")){
-			const char *filename = evicted->file == "" ? nullptr : evicted->file.c_str();
+			const char *filename = (evicted->file == "")? nullptr : evicted->file.c_str();
 			if(file_write(filename, evicted->block, (void*)((char*)vm_physmem + (evicted->pte.ppage * VM_PAGESIZE))) == -1)
 				return false;
 			evicted->dirty = 0;
@@ -108,8 +108,11 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	}
 	else{
 		const char *filename = page->file == "" ? nullptr : page->file.c_str();
-		if(file_read(filename, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE))) == -1)
+		if(file_read(filename, page->block, (void*)((char*)vm_physmem + (ppage * VM_PAGESIZE))) == -1){
+			page->reference = 0;
+			page->resident = 0;
 			return false;	
+		}
 	}
 	page->pte.ppage = ppage;
 	page->reference = 0;
