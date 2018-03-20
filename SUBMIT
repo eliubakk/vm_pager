@@ -1,5 +1,6 @@
 test_dirty_swap_blocks.8.cc
 test_eager_reserve.4.cc
+test_fb_arenasize_check.4.cc
 test_fb_fork_rw.4.cc
 test_fb_map_fork_yield_write_repeat.4.cc
 test_fb_map_in_fork.4.cc
