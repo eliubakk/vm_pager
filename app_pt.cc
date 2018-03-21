@@ -58,6 +58,14 @@ bool app_pt::reserve_blocks(size_t reserve){
 	return true;
 }
 
+//MODIFIES: pt, ptes
+//EFFECTS: Pushes changes to the internal pte, to the external pte
+void app_pt::update_external_pt(){
+	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && ptes[i] != nullptr; ++i){
+		pt->ptes[i] = ptes[i]->pte;
+	}
+}
+
 //REQUIRES: arena not be full, and a new swap_block has been reserved.
 //MODIFIES: pt, ptes, free_swap_blocks
 //EFFECTS: maps to zero page or creates a new app_pte, 

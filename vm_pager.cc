@@ -63,9 +63,7 @@ void vm_switch(pid_t pid){
 	page_table_base_register = app->pt;
 
 	//update permission bits that may have changed
-	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
-		page_table_base_register->ptes[i] = app->ptes[i]->pte;
-	}
+	app->update_external_pt();
 
 	global_data.curr_pid = pid;
 }
@@ -134,10 +132,7 @@ int vm_fault(const void *addr, bool write_flag){
 		(app->ptes[vpage]->file == "" && app->ptes[vpage]->num_refs > 1)? 0 : app->ptes[vpage]->dirty;
 	
 	//updated external page table to reflect internal changes 
-	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
-	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
-		page_table_base_register->ptes[i] = app->ptes[i]->pte;
-	}
+	app->update_external_pt();
 	return 0;
 }
 

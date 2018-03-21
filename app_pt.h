@@ -29,6 +29,7 @@ public:
 	app_pt(pid_t parent);
 
 	bool reserve_blocks(size_t reserve);
+	void update_external_pt();
 
 	void *map_swap_backed(int index = -1);
 	void *map_file_backed(std::string filename, size_t block);

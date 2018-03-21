@@ -72,14 +72,6 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 			evicted->pte.read_enable = 0;
 			evicted->pte.write_enable = 0;
 
-			//if evicted is a page in the running process, update external PTE
-			for(unsigned int i = 0; app->ptes[i] != nullptr && i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
-				if(app->ptes[i] == evicted){
-					app->pt->ptes[i] = evicted->pte;
-					break;
-				}
-			}
-
 			//if recently referenced, give second chance
 			if(evicted->reference){
 				evicted->reference = 0;
