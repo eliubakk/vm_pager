@@ -133,7 +133,8 @@ int vm_fault(const void *addr, bool write_flag){
 	}
 
 	app->ptes[vpage]->dirty |=  write_flag;
-	app->ptes[vpage]->pte.write_enable = (app->ptes[vpage]->dirty || write_flag);
+	app->ptes[vpage]->pte.write_enable = 
+		(app->ptes[vpage]->file == "" && app->ptes[vpage]->num_refs > 1)? 0 : (app->ptes[vpage]->dirty || write_flag);
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
 		page_table_base_register->ptes[i] = app->ptes[i]->pte;
