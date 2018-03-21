@@ -2,9 +2,7 @@
 #define _APP_PT_H_
 
 #include "vm_pager.h"
-#include <bitset>
 #include <utility>
-//#include <queue>
 #include <string>
 
 class app_pt{
