@@ -10,6 +10,10 @@ vm_globals::vm_globals(){
 	zero_page = new app_pt::app_pte("", 0);
 	zero_page->num_refs = 0;
 	zero_page->resident = 1;
+	curr_pid = 0;
+	memory_pages = 0;
+	max_swap_blocks = 0;
+	swap_blocks_used = 0;
 }
 
 vm_globals::~vm_globals(){
@@ -32,9 +36,10 @@ bool vm_globals::reserve_blocks(pid_t parent){
 	return true;
 }
 
-//REQUIRES: page be a vaild pointer and not be in physmem.
-//MODIFIES: physmem, page, global_data.clock
+//REQUIRES: vpage be mapped, and not be in physmem.
+//MODIFIES: physmem, vpage, global_data.clock
 //EFFECTS: loads page into physmem, evicts a page to disk if mem is full
+//RETURNS: false on file_read or file_write fail, otherwise true.
 bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	app_pt* app = app_map[curr_pid];
 	app_pt::app_pte *page = app->ptes[vpage];
@@ -47,6 +52,8 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 		for(auto it: clock){
 			resident[it->pte.ppage] = true;
 		}
+
+		//find first ppage that is not resident and break
 		for(unsigned int i = 0; i < memory_pages; ++i){
 			if(!resident[i]){
 				ppage = i;
@@ -121,6 +128,8 @@ bool vm_globals::load_page(unsigned int vpage, char* buffer){
 	return true;
 }
 
+//MODIFIES: clock
+//EFFECTS: if page is in the clock, it gets removed, order does not change.
 void vm_globals::remove_from_clock(app_pt::app_pte* page){
 	for(auto it = clock.begin(); it != clock.end(); ++it){
 		if(*it == page){

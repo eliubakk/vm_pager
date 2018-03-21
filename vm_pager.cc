@@ -61,19 +61,12 @@ int vm_create(pid_t parent_pid, pid_t child_pid){
 void vm_switch(pid_t pid){
 	app_pt *app = global_data.app_map[pid];
 	page_table_base_register = app->pt;
-	//update permission bits (for shared pages)
+
+	//update permission bits that may have changed
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
-		/*//cout << "app->ptes[" << i << "]:" << endl;
-		//cout << "num_refs: " << app->ptes[i]->num_refs << endl;
-		//cout << "reference: " << app->ptes[i]->reference << endl;
-		//cout << "pte.ppage: " << app->ptes[i]->pte.ppage;
-		//cout << ", r: " << app->ptes[i]->pte.read_enable;
-		//cout << ", w: " << app->ptes[i]->pte.write_enable << endl;
-		//cout << "dirty: " << app->ptes[i]->dirty << endl;
-		//cout << "resident: " << app->ptes[i]->resident << endl;
-		//cout << "block: " << app->ptes[i]->block << endl;*/
 		page_table_base_register->ptes[i] = app->ptes[i]->pte;
 	}
+
 	global_data.curr_pid = pid;
 }
 
@@ -115,6 +108,7 @@ int vm_fault(const void *addr, bool write_flag){
 			//Read page from memory into kernel adderess space.
 			buffer[i] = ((char*)vm_physmem + app->ptes[vpage]->pte.ppage * VM_PAGESIZE)[i];
 		}
+
 		//Page can be written to if dirty and no other pages reference it
 		if(--(app->ptes[vpage]->num_refs) == 1){
 			app->ptes[vpage]->pte.write_enable = (app->ptes[vpage]->resident && app->ptes[vpage]->dirty);
@@ -132,9 +126,14 @@ int vm_fault(const void *addr, bool write_flag){
 		app->ptes[vpage]->pte.read_enable = 1;
 	}
 
+	//if just written to, dirty
 	app->ptes[vpage]->dirty |=  write_flag;
+
+	//enable write when page is not shared swapbacked, and is dirty 
 	app->ptes[vpage]->pte.write_enable = 
-		(app->ptes[vpage]->file == "" && app->ptes[vpage]->num_refs > 1)? 0 : (app->ptes[vpage]->dirty || write_flag);
+		(app->ptes[vpage]->file == "" && app->ptes[vpage]->num_refs > 1)? 0 : app->ptes[vpage]->dirty;
+	
+	//updated external page table to reflect internal changes 
 	app->pt->ptes[vpage] = app->ptes[vpage]->pte;
 	for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE && app->ptes[i] != nullptr; ++i){
 		page_table_base_register->ptes[i] = app->ptes[i]->pte;
@@ -189,6 +188,9 @@ void vm_destroy(){
 			}
 		}
 	}
+
+	//delete app
+	delete app;
 }
 
 /*
@@ -232,33 +234,39 @@ void *vm_map(const char *filename, size_t block){
 		unsigned int vpage = (unsigned int)(filename - (char*)VM_ARENA_BASEADDR)/VM_PAGESIZE;
 		//maybe do arithmatic as char* and then case to unsigned int.
 		unsigned int offset = (unsigned long long)filename - (vpage * VM_PAGESIZE);
+
+		//check filename address is valid
 		if (filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
-		 	return nullptr;
+			return nullptr;
 			
-		//check if valid address
+		//copy filename from physmem to kernel mem.
 		ostringstream file;
 		for (int i = 0; !(filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index); ++i){
+			//read fault if vpage is not read_enabled
 			if(!app->ptes[vpage]->pte.read_enable){
 				if(vm_fault((char*)VM_ARENA_BASEADDR + (vpage * VM_PAGESIZE), 0) == -1){
 					return nullptr;
 				}
 			}
+			//if end of filename, break from loop
 			if (((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset] == '\0') {
 				break;
 			}
 			else {
+				//add char to kernel string
 				file << ((char *)vm_physmem + (app->ptes[vpage]->pte.ppage * VM_PAGESIZE))[offset];
 				++offset;
 				if (offset == VM_PAGESIZE) {
+					//end of vpage, got to next one.
 					offset = 0;
 					++vpage;
 				}
 			}
 		}
+		//check if filename did not end before the end of the arena
 		if (filename < VM_ARENA_BASEADDR || filename >= ((char*)VM_ARENA_BASEADDR + VM_ARENA_SIZE) || vpage >= app->pte_next_index)
-		 	return nullptr;
+			return nullptr;
 
 		return app->map_file_backed(file.str(), block);
 	}
-	return nullptr;
 }

@@ -13,6 +13,7 @@ app_pt::app_pt(pid_t parent){
 	swap_blocks_used = 0;
 	pte_next_index = 0;
 	if(!parent){
+		//init everything to zero
 		for(unsigned int i = 0; i < VM_ARENA_SIZE/VM_PAGESIZE; ++i){
 			pt->ptes[i].ppage = 0;
 			pt->ptes[i].read_enable = 0;
@@ -49,24 +50,27 @@ app_pt::app_pt(pid_t parent){
 }
 
 //REQUIRES: global_data.reserve_blocks() be called first.
-//MODIFIES: global_data.swap_blocks, this.swap_blocks.
-//EFFECTS:  sets reserve number of blocks to 1 (reserved).
+//MODIFIES: swap_blocks_used.
+//EFFECTS:  increases swap_blocks_used by reserve.
 //RETURNS:  true if there were enough blocks to reserve.
 bool app_pt::reserve_blocks(size_t reserve){
 	swap_blocks_used += reserve;
 	return true;
 }
 
-//REQUIRES: a new swap_block has been reserved.
-//MODIFIES: pt, ptes, swap_blocks
-//EFFECTS: creates a new app_pte, and sets swap_block to used.
+//REQUIRES: arena not be full, and a new swap_block has been reserved.
+//MODIFIES: pt, ptes, free_swap_blocks
+//EFFECTS: maps to zero page or creates a new app_pte, 
+//         and uses a free_swap_block.
 //RETURNS: virtual address of new swap backed bage.
 void* app_pt::map_swap_backed(int index){
 	if(index == -1){
+		//vm_map called
 		index = pte_next_index++;
 		ptes[index] = global_data.zero_page;
 	}
 	else{
+		//write to zero page or copy on write
 		ptes[index] = new app_pte("", global_data.free_swap_blocks.front());
 		global_data.free_swap_blocks.pop();		
 	}
@@ -74,13 +78,20 @@ void* app_pt::map_swap_backed(int index){
 	return (void*)((char*)VM_ARENA_BASEADDR + (index)*VM_PAGESIZE);
 }
 
-
+//REQUIRES: arena not be full
+//MODIFIES: pt, ptes, file_blocks, pte_next_index
+//EFFECTS: creates a new app_pte one for filename and block doesn't exist.
+//		   otherwise it increases num_refs. Puts the app_pte into ptes.
+//RETURNS: virtual address of new filebacked page.
 void* app_pt::map_file_backed(string filename, size_t block) {
 	unsigned int index = pte_next_index++;
+	//check if this file and block has already been mapped
 	if (global_data.file_blocks[filename].find(block) == global_data.file_blocks[filename].end()) {
 		global_data.file_blocks[filename][block] = new app_pte(filename, block);
-	} else 
+	} else {
+		//increase num refs to this file and block
 		++(global_data.file_blocks[filename][block]->num_refs);
+	}
 
 	ptes[index] = global_data.file_blocks[filename][block];
 	pt->ptes[index] = ptes[index]->pte;
