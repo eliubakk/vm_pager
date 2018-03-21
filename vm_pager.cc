@@ -161,9 +161,7 @@ void vm_destroy(){
 			if (app->ptes[i]->file != "") {
 				//file backed, not in memory, delete vpage
 				global_data.file_blocks[app->ptes[i]->file].erase(app->ptes[i]->block);
-				if (!app->ptes[i]->dirty){
-					delete app->ptes[i];
-				}
+				delete app->ptes[i];
 			} else {
 				//swap backed not in memory, delete vpage, free swapblock
 				global_data.free_swap_blocks.push(app->ptes[i]->block);
